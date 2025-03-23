@@ -36,8 +36,12 @@ const GridSystem: React.FC<GridSystemProps> = ({
   useEffect(() => {
     if (visible) {
       scene.add(gridHelper);
-      return () => scene.remove(gridHelper);
     }
+    return () => {
+      if (visible) {
+        scene.remove(gridHelper);
+      }
+    };
   }, [visible, scene, gridHelper]);
 
   useFrame(() => {
@@ -60,8 +64,7 @@ const GridSystem: React.FC<GridSystemProps> = ({
   return (
     <group>
       <Grid
-        args={[size, size]}
-        divisions={divisions}
+        args={[size, size, divisions, divisions]}
         cellColor={cellColor}
         sectionColor={sectionColor}
         fadeDistance={fadeDistance}
