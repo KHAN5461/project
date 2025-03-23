@@ -27,9 +27,9 @@ const BottomPanel = () => {
           <div className="p-2 font-mono text-sm">
             {/* Console content */}
             <div className="text-muted-foreground">
-              > Game engine initialized
+              {'>'} Game engine initialized
               <br />
-              > Scene loaded successfully
+              {'>'} Scene loaded successfully
             </div>
           </div>
         </ScrollArea>
