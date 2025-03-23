@@ -1,6 +1,4 @@
 {
-  "types": ["@types/firebase"],
-  "extends": "@tsconfig/node18/tsconfig.json",
   "types": ["firebase"],
   "compilerOptions": {
     "target": "ES2020",
