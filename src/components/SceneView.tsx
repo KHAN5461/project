@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
@@ -13,9 +12,9 @@ import {
   TriangleObject, 
   LightObject,
   SceneControls,
-  GridSystem,
-  TransformControls
+  GridSystem
 } from './scene';
+import { TransformControls } from '@react-three/drei';
 
 interface SceneProps {
   objects: GameObject[];
@@ -96,6 +95,7 @@ const Scene: React.FC<SceneProps> = ({
         shadows
         camera={{ position: [0, 0, 10], fov: 50 }}
         style={{ background: '#1a2035' }}
+        gl={{ preserveDrawingBuffer: true }}
       >
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
@@ -118,12 +118,19 @@ const Scene: React.FC<SceneProps> = ({
       
       <Environment preset="city" />
       
-      {selectedObject && selectedObjectRef.current && (
+      {selectedObject && selectedObjectRef.current && !error && (
         <TransformControls
           object={selectedObjectRef.current}
           mode={transformMode}
           enabled={!isPreviewing}
-          onObjectChange={onObjectChange}
+          onObjectChange={() => {
+            try {
+              onObjectChange?.();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Transform operation failed');
+              setTransformMode('translate');
+            }
+          }}
         />
       )}
       
@@ -191,12 +198,9 @@ const Scene: React.FC<SceneProps> = ({
         }
       })}
     </Canvas>
+    </>
   );
 };
 
 export default Scene;
-
-    function useEffect(arg0: () => void, arg1: (string | null)[]) {
-      throw new Error('Function not implemented.');
-    }
 
