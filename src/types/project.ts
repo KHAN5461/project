@@ -1,4 +1,3 @@
-
 export type GameObject = {
   id: string;
   type: 'rectangle' | 'circle' | 'text' | 'image' | 'triangle' | 'box' | 'model' | 'light' | 'sound';
@@ -13,6 +12,7 @@ export type GameObject = {
   zIndex: number;
   locked: boolean;
   visible: boolean;
+  intensity?: number;  // Added for light objects
   // 3D properties
   position?: [number, number, number];
   scale?: [number, number, number];
