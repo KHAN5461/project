@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { GameObject } from '@/types/project';
 import { useToast } from '@/hooks/use-toast';
@@ -74,6 +73,7 @@ export const useObjectManipulation = (initialObjects: GameObject[] = []) => {
       switch (obj.type) {
         case 'rectangle':
         case 'box':
+        case 'triangle':
           if (typeof obj.width !== 'number' || typeof obj.height !== 'number') {
             throw new Error(`Invalid ${obj.type}: width and height must be numbers`);
           }
@@ -88,6 +88,36 @@ export const useObjectManipulation = (initialObjects: GameObject[] = []) => {
             throw new Error('Invalid text object: text property must be a string');
           }
           break;
+        case 'model':
+          if (!Array.isArray(obj.position) || obj.position.length !== 3 ||
+              !Array.isArray(obj.scale) || obj.scale.length !== 3 ||
+              !obj.position.every(n => typeof n === 'number') ||
+              !obj.scale.every(n => typeof n === 'number')) {
+            throw new Error('Invalid model: position and scale must be arrays of 3 numbers');
+          }
+          break;
+        case 'light':
+          if (typeof obj.intensity !== 'number' || isNaN(obj.intensity) ||
+              typeof obj.width !== 'number' || typeof obj.height !== 'number') {
+            throw new Error('Invalid light: intensity, width, and height must be valid numbers');
+          }
+          break;
+        case 'sound':
+          if (!obj.audioSettings ||
+              typeof obj.audioSettings.volume !== 'number' || 
+              isNaN(obj.audioSettings.volume) ||
+              typeof obj.audioSettings.loop !== 'boolean' ||
+              typeof obj.audioSettings.spatial !== 'boolean') {
+            throw new Error('Invalid sound: audioSettings must include valid volume, loop, and spatial properties');
+          }
+          break;
+        case 'image':
+          if (typeof obj.width !== 'number' || typeof obj.height !== 'number') {
+            throw new Error('Invalid image: width and height must be numbers');
+          }
+          break;
+        default:
+          throw new Error(`Unsupported object type: ${obj.type}`);
       }
       
       return true;
@@ -103,11 +133,19 @@ export const useObjectManipulation = (initialObjects: GameObject[] = []) => {
   }, []);
 
   const createObject = useCallback((type: GameObject['type'], x: number, y: number) => {
-    if (isUpdating.current) return;
+    if (isUpdating.current) {
+      toast({
+        title: "Error",
+        description: "An operation is already in progress.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (objects.length >= MAX_OBJECTS) {
       toast({
         title: "Error",
         description: "Maximum object limit reached.",
+        variant: "destructive"
       });
       return;
     }
@@ -132,10 +170,10 @@ export const useObjectManipulation = (initialObjects: GameObject[] = []) => {
         newObject = { ...baseObject, width: 100, height: 80 };
         break;
       case 'circle':
-        newObject = { ...baseObject, radius: 40 };
+        newObject = { ...baseObject, radius: 40, width: 80, height: 80 };
         break;
       case 'text':
-        newObject = { ...baseObject, text: 'New Text' };
+        newObject = { ...baseObject, text: 'New Text', width: 100, height: 50 };
         break;
       case 'triangle':
         newObject = { ...baseObject, width: 100, height: 80 };
@@ -147,15 +185,24 @@ export const useObjectManipulation = (initialObjects: GameObject[] = []) => {
         newObject = { 
           ...baseObject,
           position: [0, 0, 0],
-          scale: [1, 1, 1]
+          scale: [1, 1, 1],
+          width: 100,
+          height: 100
         };
         break;
       case 'light':
-        newObject = { ...baseObject };
+        newObject = { 
+          ...baseObject,
+          intensity: 1,
+          width: 50,
+          height: 50
+        };
         break;
       case 'sound':
         newObject = { 
           ...baseObject,
+          width: 50,
+          height: 50,
           audioSettings: {
             volume: 1,
             loop: false,
@@ -163,20 +210,36 @@ export const useObjectManipulation = (initialObjects: GameObject[] = []) => {
           }
         };
         break;
+      case 'image':
+        newObject = {
+          ...baseObject,
+          width: 100,
+          height: 100
+        };
+        break;
       default:
+        toast({
+          title: "Error",
+          description: `Unsupported object type: ${type}`,
+          variant: "destructive"
+        });
         return;
     }
-    
+
+    if (!validateObject(newObject)) {
+      return;
+    }
+
     setObjects(prev => [...prev, newObject]);
     setSelectedObject(id);
-    
+
     toast({
       title: "Object Created",
       description: `A new ${type} was added to the scene.`,
     });
 
     return newObject;
-  };
+  }, [objects, validateObject, toast]);
 
   const deleteObject = (id: string) => {
     setObjects(objects.filter(obj => obj.id !== id));
@@ -195,75 +258,65 @@ export const useObjectManipulation = (initialObjects: GameObject[] = []) => {
   };
 
   const updateObject = useCallback((id: string, updates: Partial<GameObject>) => {
-    try {
-      if (isUpdating.current) {
-        toast({
-          title: "Operation in Progress",
-          description: "Please wait for the current update to complete.",
-          variant: "warning"
-        });
-        return;
-      }
+    if (isUpdating.current) {
+      toast({
+        title: "Operation in Progress",
+        description: "Please wait for the current update to complete.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      if (typeof id !== 'string' || !id.trim()) {
-        toast({
-          title: "Invalid Operation",
-          description: "Invalid object ID provided for update.",
-          variant: "destructive"
-        });
-        return;
-      }
+    if (typeof id !== 'string' || !id.trim()) {
+      toast({
+        title: "Invalid Operation",
+        description: "Invalid object ID provided for update.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      if (!updates || typeof updates !== 'object') {
-        toast({
-          title: "Invalid Operation",
-          description: "Invalid update properties provided.",
-          variant: "destructive"
-        });
-        return;
-      }
+    if (!updates || typeof updates !== 'object') {
+      toast({
+        title: "Invalid Operation",
+        description: "Invalid update properties provided.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      isUpdating.current = true;
-      setObjects(prev => {
-        try {
-          const targetObject = prev.find(obj => obj.id === id);
-          if (!targetObject) {
-            toast({
-              title: "Update Failed",
-              description: `Object with ID ${id} not found.`,
-              variant: "destructive"
-            });
-            return prev;
-          }
-
-          const updatedObject = { ...targetObject, ...updates };
-          if (!validateObject(updatedObject)) {
-            return prev;
-          }
-
-          return prev.map(obj => obj.id === id ? updatedObject : obj);
-        } catch (error) {
-          console.error('Error updating object:', error);
+    isUpdating.current = true;
+    setObjects(prev => {
+      try {
+        const targetObject = prev.find(obj => obj.id === id);
+        if (!targetObject) {
           toast({
             title: "Update Failed",
-            description: error instanceof Error ? error.message : "An unexpected error occurred",
+            description: `Object with ID ${id} not found.`,
             variant: "destructive"
           });
           return prev;
         }
-      });
-    } catch (error) {
-      console.error('Error in updateObject:', error);
-      toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      isUpdating.current = false;
-    }
-  }, [validateObject]);
 
+        const updatedObject = { ...targetObject, ...updates };
+        if (!validateObject(updatedObject)) {
+          return prev;
+        }
+
+        return prev.map(obj => obj.id === id ? updatedObject : obj);
+      } catch (error) {
+        console.error('Error updating object:', error);
+        toast({
+          title: "Update Failed",
+          description: error instanceof Error ? error.message : "An unexpected error occurred",
+          variant: "destructive"
+        });
+        return prev;
+      } finally {
+        isUpdating.current = false; // Ensure this runs after the callback
+      }
+    });
+  }, [validateObject, toast]);
 
   return {
     objects,
