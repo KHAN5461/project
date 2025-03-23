@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
+import * as THREE from 'three';
 import { GameObject } from '@/types/project';
 import FloatingToolbar from './toolbar/FloatingToolbar';
 import { useFloatingToolbar } from '@/hooks/useFloatingToolbar';
@@ -40,7 +41,7 @@ const Scene: React.FC<SceneProps> = ({
 }) => {
   const [transformMode, setTransformMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
   const [error, setError] = useState<string | null>(null);
-  const selectedObjectRef = useRef<THREE.Object3D | null>(null);
+  const selectedObjectRef = useRef<THREE.Object3D>();
   const selectedElements = selectedObject && selectedObjectRef.current ? [selectedObjectRef.current] : [];
   
   // Validate transform mode changes with enhanced error handling
@@ -120,7 +121,7 @@ const Scene: React.FC<SceneProps> = ({
       
       {selectedObject && selectedObjectRef.current && !error && (
         <TransformControls
-          object={selectedObjectRef.current}
+          object={selectedObjectRef.current as THREE.Object3D}
           mode={transformMode}
           enabled={!isPreviewing}
           onObjectChange={() => {
